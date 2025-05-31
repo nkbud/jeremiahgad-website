@@ -101,7 +101,12 @@ If using your own Supabase instance, you'll need to set up the database schema:
 #### 4.1. Authentication Configuration
 1. In your Supabase dashboard, go to Authentication > Settings
 2. Enable Email/Password authentication
-3. Configure any email templates as needed
+3. Configure email templates as needed
+4. **Important**: Update the redirect URLs for email confirmation:
+   - Go to Authentication > URL Configuration
+   - Add `http://localhost:5173/auth/callback` to the "Redirect URLs" list
+   - For production, add your production domain (e.g., `https://yourdomain.com/auth/callback`)
+   - This ensures email confirmation links redirect to the correct URL
 
 #### 4.2. Database Schema
 Execute the following SQL scripts in your Supabase SQL Editor:

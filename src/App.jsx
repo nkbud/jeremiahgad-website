@@ -17,6 +17,8 @@ import React from 'react';
     import { Home, BookOpen, Tag, Rss, CalendarCheck, LayoutDashboard as DashboardIcon, ShieldCheck, Info as InfoIcon } from 'lucide-react';
     import BookAppointmentPage from '@/pages/BookAppointmentPage';
     import InstructionsPage from '@/pages/InstructionsPage';
+    import EmailConfirmationPage from '@/pages/EmailConfirmationPage';
+    import EmailConfirmationHandler from '@/pages/EmailConfirmationHandler';
 
     const baseNavLinks = [
       { to: '/', label: 'Home', Icon: Home, public: true },
@@ -45,6 +47,8 @@ import React from 'react';
                 <Route path="/blog/:slug" element={<BlogPostPage />} />
                 <Route path="/book-appointment" element={<BookAppointmentPage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/email-confirmation" element={<EmailConfirmationPage />} />
+                <Route path="/auth/callback" element={<EmailConfirmationHandler />} />
                 <Route 
                   path="/dashboard" 
                   element={

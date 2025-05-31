@@ -66,24 +66,37 @@ const AuthProviderComponent = ({ children }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setLoading(true); // Set loading true during auth state changes
+        console.log('Auth state change:', event, session?.user?.id);
+        
+        // Only set loading for actual auth events, not initial session restoration
+        if (event !== 'INITIAL_SESSION') {
+          setLoading(true);
+        }
+        
         setUser(session?.user ?? null);
         let userProfile = null;
         if (session?.user) {
           // Try to fetch profile, might take a moment if it's new (created by trigger)
           // Add a small delay or retry mechanism if profiles are not immediately available after signup
-          await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+          if (event === 'SIGNED_UP') {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for new signups
+          }
           userProfile = await fetchUserProfile(session.user.id, toast);
           setProfile(userProfile);
         } else {
           setProfile(null);
         }
         
+        // Only navigate on actual sign in/out events, not on session restoration
         if (event === 'SIGNED_IN') {
-           navigate(userProfile?.is_admin ? '/admin-dashboard' : '/dashboard');
+          // Only navigate if we're currently on the auth page to avoid disrupting user navigation
+          if (window.location.pathname === '/auth') {
+            navigate(userProfile?.is_admin ? '/admin-dashboard' : '/dashboard');
+          }
         } else if (event === 'SIGNED_OUT') {
           navigate('/');
         }
+        
         setLoading(false); // Set loading false after processing
       }
     );
@@ -111,6 +124,8 @@ const AuthProviderComponent = ({ children }) => {
        toast({ title: "Account already exists", description: "An account with this email already exists. Please try logging in." });
     } else if (data.user) {
       toast({ title: "Sign up successful!", description: "Please check your email to confirm your account." });
+      // Navigate to email confirmation page with the email
+      navigate('/email-confirmation', { state: { email } });
       // Profile might not be available immediately due to trigger, handled by onAuthStateChange
     }
     setLoading(false);
