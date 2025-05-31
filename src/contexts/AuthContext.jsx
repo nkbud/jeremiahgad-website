@@ -39,7 +39,6 @@ const AuthProviderComponent = ({ children }) => {
   const { toast } = useToast();
   
   useEffect(() => {
-    setLoading(true); // Ensure loading is true at the start of any auth change
     const getSessionAndProfile = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -68,10 +67,10 @@ const AuthProviderComponent = ({ children }) => {
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
-        // Only set loading for events that actually change the auth state significantly
-        // Don't show loading screen for returning users (SIGNED_IN when user already exists)
+        // Only set loading for events that require user action or significant state changes
+        // Never show loading for INITIAL_SESSION or when just restoring existing sessions
         const shouldShowLoading = event === 'SIGNED_UP' || event === 'SIGNED_OUT' || 
-                                 (event === 'SIGNED_IN' && !user);
+                                 (event === 'SIGNED_IN' && !user && window.location.pathname === '/auth');
         
         if (shouldShowLoading) {
           setLoading(true);
