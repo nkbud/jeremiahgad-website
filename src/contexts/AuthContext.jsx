@@ -117,9 +117,31 @@ const AuthProviderComponent = ({ children }) => {
         debugLog("Error in getSessionAndProfile:", error);
         console.error("Error in getSessionAndProfile:", error);
         
-        // If session restoration fails, clear any potentially corrupted session
-        if (error.message?.includes('timeout') || error.message?.includes('network')) {
-          debugLog('Session restoration failed, clearing potentially corrupted session');
+        // If session restoration fails, try alternative approaches
+        if (error.message?.includes('timeout')) {
+          debugLog('Session restoration timed out, trying alternative approach...');
+          
+          try {
+            // Try accessing user directly from supabase client
+            const currentUser = supabase.auth.getUser ? await supabase.auth.getUser() : null;
+            debugLog('Alternative user fetch result:', currentUser?.data?.user?.id || 'no user');
+            
+            if (currentUser?.data?.user && mounted) {
+              debugLog('Found user via alternative method, setting up session');
+              setUser(currentUser.data.user);
+              const userProfile = await fetchUserProfile(currentUser.data.user.id, toast);
+              if (mounted) {
+                setProfile(userProfile);
+                debugLog('Successfully restored session via alternative method');
+                return; // Success, skip the error handling below
+              }
+            }
+          } catch (altError) {
+            debugLog('Alternative user fetch also failed:', altError);
+          }
+          
+          // If alternative method also fails, clear any potentially corrupted session
+          debugLog('All session restoration methods failed, clearing potentially corrupted session');
           try {
             await supabase.auth.signOut();
             debugLog('Successfully cleared corrupted session');
