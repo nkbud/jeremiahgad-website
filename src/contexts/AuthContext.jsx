@@ -3,11 +3,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 
-// Debug logging utility
+// Debug logging utility - using console.info for better visibility
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
 const debugLog = (message, ...args) => {
   if (DEBUG_MODE) {
-    console.log(`[AUTH DEBUG] ${message}`, ...args);
+    console.info(`[AUTH DEBUG] ${message}`, ...args);
   }
 };
 
@@ -63,6 +63,7 @@ const AuthProviderComponent = ({ children }) => {
   
   useEffect(() => {
     debugLog('AuthProvider useEffect starting - initializing session');
+    let mounted = true; // Track if component is still mounted
     
     const getSessionAndProfile = async () => {
       debugLog('getSessionAndProfile called');
@@ -74,12 +75,21 @@ const AuthProviderComponent = ({ children }) => {
           throw sessionError;
         }
 
+        if (!mounted) {
+          debugLog('Component unmounted, aborting getSessionAndProfile');
+          return;
+        }
+
         debugLog('Session retrieved:', session?.user?.id ? `User ID: ${session.user.id}` : 'No session');
         setUser(session?.user ?? null);
         
         if (session?.user) {
           debugLog('User found in session, fetching profile');
           const userProfile = await fetchUserProfile(session.user.id, toast);
+          if (!mounted) {
+            debugLog('Component unmounted during profile fetch, aborting');
+            return;
+          }
           debugLog('Profile fetch result:', userProfile);
           setProfile(userProfile);
         } else {
@@ -89,12 +99,16 @@ const AuthProviderComponent = ({ children }) => {
       } catch (error) {
         debugLog("Error in getSessionAndProfile:", error);
         console.error("Error in getSessionAndProfile:", error);
-        toast({ variant: "destructive", title: "Auth Error", description: "Failed to initialize session." });
-        setUser(null);
-        setProfile(null);
+        if (mounted) {
+          toast({ variant: "destructive", title: "Auth Error", description: "Failed to initialize session." });
+          setUser(null);
+          setProfile(null);
+        }
       } finally {
-        debugLog('getSessionAndProfile completed, setting loading to false');
-        setLoadingWithDebug(false, 'getSessionAndProfile completed');
+        if (mounted) {
+          debugLog('getSessionAndProfile completed, setting loading to false');
+          setLoadingWithDebug(false, 'getSessionAndProfile completed');
+        }
       }
     };
 
@@ -102,6 +116,11 @@ const AuthProviderComponent = ({ children }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) {
+          debugLog('Component unmounted, ignoring auth state change');
+          return;
+        }
+        
         debugLog('==== AUTH STATE CHANGE EVENT START ====');
         debugLog('Auth state change:', event, session?.user?.id || 'no user');
         debugLog('Current pathname:', window.location.pathname);
@@ -111,7 +130,7 @@ const AuthProviderComponent = ({ children }) => {
         // Only set loading for events that require user action or significant state changes
         // Never show loading for INITIAL_SESSION or when just restoring existing sessions
         const shouldShowLoading = event === 'SIGNED_UP' || event === 'SIGNED_OUT' || 
-                                 (event === 'SIGNED_IN' && !user && window.location.pathname === '/auth');
+                                 (event === 'SIGNED_IN' && window.location.pathname === '/auth');
         
         debugLog('Should show loading?', shouldShowLoading, 'for event:', event);
         
@@ -132,15 +151,19 @@ const AuthProviderComponent = ({ children }) => {
           debugLog('Fetching profile for user:', session.user.id);
           userProfile = await fetchUserProfile(session.user.id, toast);
           debugLog('Profile fetch completed:', userProfile?.id || 'null');
-          setProfile(userProfile);
+          if (mounted) {
+            setProfile(userProfile);
+          }
         } else {
           debugLog('No user in session, setting profile to null');
-          setProfile(null);
+          if (mounted) {
+            setProfile(null);
+          }
         }
         
         // Only navigate on actual sign in/out events, not on session restoration
         // This prevents disrupting user navigation when they revisit the site
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' && mounted) {
           debugLog('SIGNED_IN event - checking if should navigate');
           // Only navigate if we're currently on the auth page to avoid disrupting user navigation
           if (window.location.pathname === '/auth') {
@@ -150,13 +173,13 @@ const AuthProviderComponent = ({ children }) => {
           } else {
             debugLog('Not navigating - not on auth page, current path:', window.location.pathname);
           }
-        } else if (event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT' && mounted) {
           debugLog('SIGNED_OUT event - navigating to home');
           navigate('/');
         }
         
         // Only reset loading if we set it to true earlier
-        if (shouldShowLoading) {
+        if (shouldShowLoading && mounted) {
           debugLog('Resetting loading state after auth event processing');
           setLoadingWithDebug(false, `Auth event ${event} processing completed`);
         }
@@ -166,9 +189,11 @@ const AuthProviderComponent = ({ children }) => {
     );
 
     return () => {
+      mounted = false;
+      debugLog('AuthProvider useEffect cleanup - unsubscribing auth listener');
       authListener?.subscription?.unsubscribe();
     };
-  }, [navigate, toast]);
+  }, []); // Remove navigate and toast from dependencies to prevent re-runs
 
   const signUp = async (email, password, fullName) => {
     debugLog('signUp called for email:', email);
@@ -252,7 +277,10 @@ const AuthProviderComponent = ({ children }) => {
   debugLog('AuthProvider render - loading state:', loading, 'will render children:', !loading);
   
   if (loading) {
-    debugLog('AuthProvider rendering null due to loading state');
+    debugLog('AuthProvider rendering loading screen due to loading state');
+    debugLog('Current user:', user?.id || 'null');
+    debugLog('Current profile:', profile?.id || 'null');
+    debugLog('Current pathname:', window.location.pathname);
     return <AuthContext.Provider value={value}>
       <div style={{
         position: 'fixed',
@@ -264,17 +292,23 @@ const AuthProviderComponent = ({ children }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999
+        zIndex: 9999,
+        flexDirection: 'column'
       }}>
-        {DEBUG_MODE && (
-          <div style={{ textAlign: 'center' }}>
-            <div>Loading...</div>
-            <div style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-              Debug: Auth loading state
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', marginBottom: '10px' }}>Loading...</div>
+          {DEBUG_MODE && (
+            <div style={{ fontSize: '12px', color: '#666', maxWidth: '400px' }}>
+              <div>Debug Mode Active</div>
+              <div>User: {user?.id || 'null'}</div>
+              <div>Profile: {profile?.id || 'null'}</div>
+              <div>Path: {window.location.pathname}</div>
+              <div style={{ marginTop: '10px', color: '#999' }}>
+                Check console for detailed logs
+              </div>
             </div>
-          </div>
-        )}
-        {!DEBUG_MODE && <div>Loading...</div>}
+          )}
+        </div>
       </div>
     </AuthContext.Provider>;
   }
