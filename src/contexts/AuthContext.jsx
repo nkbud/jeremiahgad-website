@@ -63,13 +63,30 @@ const AuthProviderComponent = ({ children }) => {
   
   useEffect(() => {
     debugLog('AuthProvider useEffect starting - initializing session');
+    debugLog('Supabase URL:', supabase.supabaseUrl);
+    debugLog('Browser storage check - localStorage available:', typeof localStorage !== 'undefined');
+    debugLog('Browser storage check - sessionStorage available:', typeof sessionStorage !== 'undefined');
+    
     let mounted = true; // Track if component is still mounted
     
     const getSessionAndProfile = async () => {
       debugLog('getSessionAndProfile called');
       try {
-        debugLog('Calling supabase.auth.getSession()');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        debugLog('Calling supabase.auth.getSession() with timeout...');
+        
+        // Add timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Session restoration timeout after 10 seconds')), 10000);
+        });
+        
+        const { data: { session }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]);
+        
+        debugLog('Session call completed successfully');
+        
         if (sessionError) {
           debugLog('Session error:', sessionError);
           throw sessionError;
@@ -99,8 +116,29 @@ const AuthProviderComponent = ({ children }) => {
       } catch (error) {
         debugLog("Error in getSessionAndProfile:", error);
         console.error("Error in getSessionAndProfile:", error);
+        
+        // If session restoration fails, clear any potentially corrupted session
+        if (error.message?.includes('timeout') || error.message?.includes('network')) {
+          debugLog('Session restoration failed, clearing potentially corrupted session');
+          try {
+            await supabase.auth.signOut();
+            debugLog('Successfully cleared corrupted session');
+          } catch (signOutError) {
+            debugLog('Failed to clear session:', signOutError);
+          }
+        }
+        
         if (mounted) {
-          toast({ variant: "destructive", title: "Auth Error", description: "Failed to initialize session." });
+          // For timeout errors, show a more specific message
+          const errorMessage = error.message?.includes('timeout') 
+            ? "Session restoration timed out. Please sign in again."
+            : "Failed to initialize session.";
+          
+          toast({ 
+            variant: "destructive", 
+            title: "Auth Error", 
+            description: errorMessage 
+          });
           setUser(null);
           setProfile(null);
         }
