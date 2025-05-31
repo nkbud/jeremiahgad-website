@@ -69,6 +69,7 @@ const AuthProviderComponent = ({ children }) => {
         console.log('Auth state change:', event, session?.user?.id);
         
         // Only set loading for actual auth events, not initial session restoration
+        // This prevents the blank page issue when users revisit the site
         if (event !== 'INITIAL_SESSION') {
           setLoading(true);
         }
@@ -88,6 +89,7 @@ const AuthProviderComponent = ({ children }) => {
         }
         
         // Only navigate on actual sign in/out events, not on session restoration
+        // This prevents disrupting user navigation when they revisit the site
         if (event === 'SIGNED_IN') {
           // Only navigate if we're currently on the auth page to avoid disrupting user navigation
           if (window.location.pathname === '/auth') {

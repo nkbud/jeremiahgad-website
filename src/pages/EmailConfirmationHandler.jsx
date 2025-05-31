@@ -11,9 +11,13 @@ const EmailConfirmationHandler = () => {
 
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      const token = searchParams.get('token');
+      // Check for various confirmation URL parameters that Supabase might send
+      const token = searchParams.get('token') || searchParams.get('token_hash');
       const type = searchParams.get('type');
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
       
+      // Handle different types of email confirmations
       if (type === 'signup' && token) {
         try {
           const { data, error } = await supabase.auth.verifyOtp({
@@ -45,8 +49,41 @@ const EmailConfirmationHandler = () => {
           });
           navigate('/auth');
         }
+      } else if (accessToken && refreshToken) {
+        // Handle direct token-based confirmation (newer Supabase format)
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            console.error('Session setup error:', error);
+            toast({
+              variant: "destructive",
+              title: "Confirmation Failed",
+              description: "Failed to confirm your email. Please try again."
+            });
+            navigate('/auth');
+          } else if (data.user) {
+            toast({
+              title: "Email Confirmed!",
+              description: "Your account has been successfully confirmed. Welcome!"
+            });
+            // User will be redirected by the auth state change listener
+          }
+        } catch (error) {
+          console.error('Unexpected error during session setup:', error);
+          toast({
+            variant: "destructive",
+            title: "Confirmation Error",
+            description: "An unexpected error occurred. Please try again."
+          });
+          navigate('/auth');
+        }
       } else {
-        // No confirmation parameters, redirect to home
+        // No valid confirmation parameters, redirect to home
+        console.log('No confirmation parameters found, redirecting to home');
         navigate('/');
       }
     };
