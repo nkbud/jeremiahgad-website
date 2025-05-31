@@ -1,0 +1,90 @@
+
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @layer base {
+      :root {
+        --background: 0 0% 100%; /* White */
+        --foreground: 224 71.4% 4.1%; /* Dark Blue-Gray */
+
+        --card: 0 0% 100%;
+        --card-foreground: 224 71.4% 4.1%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 224 71.4% 4.1%;
+
+        --primary: 210 80% 50%; /* Trustworthy Blue */
+        --primary-foreground: 0 0% 98%; /* Light Gray for text on primary */
+
+        --secondary: 35 85% 60%; /* Warm Gold/Orange */
+        --secondary-foreground: 224 71.4% 4.1%;
+
+        --muted: 220 14.3% 95.9%; /* Light Grayish Blue */
+        --muted-foreground: 220 8.9% 46.1%;
+
+        --accent: 220 14.3% 95.9%;
+        --accent-foreground: 210 80% 50%;
+
+        --destructive: 0 72.2% 50.6%; /* Red */
+        --destructive-foreground: 0 0% 98%;
+
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
+        --ring: 210 80% 50%;
+
+        --radius: 0.75rem;
+      }
+
+      .dark {
+        --background: 224 71.4% 4.1%;
+        --foreground: 0 0% 98%;
+
+        --card: 224 71.4% 4.1%;
+        --card-foreground: 0 0% 98%;
+
+        --popover: 224 71.4% 4.1%;
+        --popover-foreground: 0 0% 98%;
+
+        --primary: 210 80% 50%;
+        --primary-foreground: 0 0% 98%;
+
+        --secondary: 35 85% 60%;
+        --secondary-foreground: 0 0% 98%;
+
+        --muted: 220 3.4% 15.9%;
+        --muted-foreground: 220 8.9% 46.1%;
+
+        --accent: 220 3.4% 15.9%;
+        --accent-foreground: 0 0% 98%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+
+        --border: 220 3.4% 15.9%;
+        --input: 220 3.4% 15.9%;
+        --ring: 210 80% 50%;
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+      }
+    }
+
+    .glassmorphism-card {
+      @apply bg-white/30 backdrop-blur-lg border border-white/20 shadow-xl rounded-xl;
+    }
+
+    .neumorphism-button {
+      @apply rounded-lg shadow-[5px_5px_10px_#bcbec0,-5px_-5px_10px_#ffffff] transition-all duration-200 ease-in-out hover:shadow-[2px_2px_5px_#bcbec0,-2px_-2px_5px_#ffffff];
+    }
+    .neumorphism-button-inset {
+      @apply rounded-lg shadow-[inset_5px_5px_10px_#bcbec0,inset_-5px_-5px_10px_#ffffff] transition-all duration-200 ease-in-out;
+    }
+  
