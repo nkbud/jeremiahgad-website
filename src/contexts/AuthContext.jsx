@@ -3,10 +3,19 @@ import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 
+// Debug logging utility
+const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
+const debugLog = (message, ...args) => {
+  if (DEBUG_MODE) {
+    console.log(`[AUTH DEBUG] ${message}`, ...args);
+  }
+};
+
 const AuthContext = createContext(null);
 
 const fetchUserProfile = async (userId, toast) => {
   if (!userId) return null;
+  debugLog('Fetching user profile for userId:', userId);
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -16,13 +25,16 @@ const fetchUserProfile = async (userId, toast) => {
     if (error) {
       // Don't throw error if profile not found, it might be created by trigger later
       if (error.code === 'PGRST116') { 
+        debugLog("User profile not found, might be pending creation:", userId);
         console.warn("User profile not found, might be pending creation:", userId);
         return null;
       }
       throw error;
     }
+    debugLog('User profile fetched successfully:', data);
     return data;
   } catch (error) {
+    debugLog('Error fetching user profile:', error);
     console.error('Error fetching user profile:', error);
     if (toast) {
       toast({ variant: "destructive", title: "Profile Error", description: "Could not load user profile." });
@@ -38,26 +50,51 @@ const AuthProviderComponent = ({ children }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  debugLog('AuthProvider initialized, initial loading state:', true);
+  
+  // Helper function to update loading state with debug logging
+  const setLoadingWithDebug = (newLoadingState, reason) => {
+    debugLog(`Setting loading state to ${newLoadingState} - Reason: ${reason}`);
+    debugLog(`Previous loading state was: ${loading}`);
+    debugLog('Current pathname:', window.location.pathname);
+    debugLog('Current user:', user?.id || 'null');
+    setLoading(newLoadingState);
+  };
+  
   useEffect(() => {
+    debugLog('AuthProvider useEffect starting - initializing session');
+    
     const getSessionAndProfile = async () => {
+      debugLog('getSessionAndProfile called');
       try {
+        debugLog('Calling supabase.auth.getSession()');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          debugLog('Session error:', sessionError);
+          throw sessionError;
+        }
 
+        debugLog('Session retrieved:', session?.user?.id ? `User ID: ${session.user.id}` : 'No session');
         setUser(session?.user ?? null);
+        
         if (session?.user) {
+          debugLog('User found in session, fetching profile');
           const userProfile = await fetchUserProfile(session.user.id, toast);
+          debugLog('Profile fetch result:', userProfile);
           setProfile(userProfile);
         } else {
+          debugLog('No user in session, setting profile to null');
           setProfile(null);
         }
       } catch (error) {
+        debugLog("Error in getSessionAndProfile:", error);
         console.error("Error in getSessionAndProfile:", error);
         toast({ variant: "destructive", title: "Auth Error", description: "Failed to initialize session." });
         setUser(null);
         setProfile(null);
       } finally {
-        setLoading(false);
+        debugLog('getSessionAndProfile completed, setting loading to false');
+        setLoadingWithDebug(false, 'getSessionAndProfile completed');
       }
     };
 
@@ -65,46 +102,66 @@ const AuthProviderComponent = ({ children }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        debugLog('==== AUTH STATE CHANGE EVENT START ====');
+        debugLog('Auth state change:', event, session?.user?.id || 'no user');
+        debugLog('Current pathname:', window.location.pathname);
+        debugLog('Current user state before change:', user?.id || 'null');
+        debugLog('Current loading state before change:', loading);
         
         // Only set loading for events that require user action or significant state changes
         // Never show loading for INITIAL_SESSION or when just restoring existing sessions
         const shouldShowLoading = event === 'SIGNED_UP' || event === 'SIGNED_OUT' || 
                                  (event === 'SIGNED_IN' && !user && window.location.pathname === '/auth');
         
+        debugLog('Should show loading?', shouldShowLoading, 'for event:', event);
+        
         if (shouldShowLoading) {
-          setLoading(true);
+          setLoadingWithDebug(true, `Auth event: ${event}`);
         }
         
+        debugLog('Setting user state to:', session?.user?.id || 'null');
         setUser(session?.user ?? null);
         let userProfile = null;
         if (session?.user) {
           // Try to fetch profile, might take a moment if it's new (created by trigger)
           // Add a small delay or retry mechanism if profiles are not immediately available after signup
           if (event === 'SIGNED_UP') {
+            debugLog('SIGNED_UP event, adding delay before profile fetch');
             await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for new signups
           }
+          debugLog('Fetching profile for user:', session.user.id);
           userProfile = await fetchUserProfile(session.user.id, toast);
+          debugLog('Profile fetch completed:', userProfile?.id || 'null');
           setProfile(userProfile);
         } else {
+          debugLog('No user in session, setting profile to null');
           setProfile(null);
         }
         
         // Only navigate on actual sign in/out events, not on session restoration
         // This prevents disrupting user navigation when they revisit the site
         if (event === 'SIGNED_IN') {
+          debugLog('SIGNED_IN event - checking if should navigate');
           // Only navigate if we're currently on the auth page to avoid disrupting user navigation
           if (window.location.pathname === '/auth') {
-            navigate(userProfile?.is_admin ? '/admin-dashboard' : '/dashboard');
+            const targetPath = userProfile?.is_admin ? '/admin-dashboard' : '/dashboard';
+            debugLog('Navigating to:', targetPath);
+            navigate(targetPath);
+          } else {
+            debugLog('Not navigating - not on auth page, current path:', window.location.pathname);
           }
         } else if (event === 'SIGNED_OUT') {
+          debugLog('SIGNED_OUT event - navigating to home');
           navigate('/');
         }
         
         // Only reset loading if we set it to true earlier
         if (shouldShowLoading) {
-          setLoading(false);
+          debugLog('Resetting loading state after auth event processing');
+          setLoadingWithDebug(false, `Auth event ${event} processing completed`);
         }
+        
+        debugLog('==== AUTH STATE CHANGE EVENT END ====');
       }
     );
 
@@ -114,7 +171,8 @@ const AuthProviderComponent = ({ children }) => {
   }, [navigate, toast]);
 
   const signUp = async (email, password, fullName) => {
-    setLoading(true);
+    debugLog('signUp called for email:', email);
+    setLoadingWithDebug(true, 'signUp initiated');
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -126,45 +184,56 @@ const AuthProviderComponent = ({ children }) => {
     });
 
     if (error) {
+      debugLog('signUp error:', error);
       toast({ variant: "destructive", title: "Sign up failed", description: error.message });
     } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      debugLog('signUp - account already exists');
        toast({ title: "Account already exists", description: "An account with this email already exists. Please try logging in." });
     } else if (data.user) {
+      debugLog('signUp successful, user created:', data.user.id);
       toast({ title: "Sign up successful!", description: "Please check your email to confirm your account." });
       // Navigate to email confirmation page with the email
       navigate('/email-confirmation', { state: { email } });
       // Profile might not be available immediately due to trigger, handled by onAuthStateChange
     }
-    setLoading(false);
+    setLoadingWithDebug(false, 'signUp completed');
     return { user: data.user, error };
   };
 
   const signIn = async (email, password) => {
-    setLoading(true);
+    debugLog('signIn called for email:', email);
+    setLoadingWithDebug(true, 'signIn initiated');
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
+      debugLog('signIn error:', error);
       toast({ variant: "destructive", title: "Sign in failed", description: error.message });
     } else if (data.user) {
+      debugLog('signIn successful, user:', data.user.id);
       const userProfile = await fetchUserProfile(data.user.id, toast);
       setProfile(userProfile); // This will be updated again by onAuthStateChange, but good for immediate feedback
       toast({ title: "Sign in successful!", description: `Welcome back, ${userProfile?.full_name || data.user.email}!` });
     }
     // setLoading(false) is handled by onAuthStateChange after navigation
+    debugLog('signIn method completed, loading will be reset by auth state change');
     return { user: data.user, error };
   };
 
   const signOut = async () => {
-    setLoading(true);
+    debugLog('signOut called');
+    setLoadingWithDebug(true, 'signOut initiated');
     const { error } = await supabase.auth.signOut();
     if (error) {
+      debugLog('signOut error:', error);
       toast({ variant: "destructive", title: "Sign out failed", description: error.message });
     } else {
+      debugLog('signOut successful');
       toast({ title: "Signed out", description: "You have been successfully signed out." });
     }
     // setLoading(false) is handled by onAuthStateChange after navigation
+    debugLog('signOut method completed, loading will be reset by auth state change');
   };
   
   const isAdmin = profile?.is_admin || false;
@@ -180,7 +249,38 @@ const AuthProviderComponent = ({ children }) => {
   };
 
   // Only render children when loading is false
-  return <AuthContext.Provider value={value}>{!loading ? children : null}</AuthContext.Provider>;
+  debugLog('AuthProvider render - loading state:', loading, 'will render children:', !loading);
+  
+  if (loading) {
+    debugLog('AuthProvider rendering null due to loading state');
+    return <AuthContext.Provider value={value}>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999
+      }}>
+        {DEBUG_MODE && (
+          <div style={{ textAlign: 'center' }}>
+            <div>Loading...</div>
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+              Debug: Auth loading state
+            </div>
+          </div>
+        )}
+        {!DEBUG_MODE && <div>Loading...</div>}
+      </div>
+    </AuthContext.Provider>;
+  }
+  
+  debugLog('AuthProvider rendering children normally');
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 

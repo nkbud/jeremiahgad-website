@@ -20,6 +20,14 @@ import React from 'react';
     import EmailConfirmationPage from '@/pages/EmailConfirmationPage';
     import EmailConfirmationHandler from '@/pages/EmailConfirmationHandler';
 
+    // Debug logging utility for App component
+    const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
+    const debugLog = (message, ...args) => {
+      if (DEBUG_MODE) {
+        console.log(`[APP DEBUG] ${message}`, ...args);
+      }
+    };
+
     const baseNavLinks = [
       { to: '/', label: 'Home', Icon: Home, public: true },
       { to: '/buyer-academy', label: 'Buyer Academy', Icon: BookOpen, public: true },
@@ -35,6 +43,10 @@ import React from 'react';
     ];
 
     function App() {
+      debugLog('App component render started');
+      debugLog('Current URL:', window.location.href);
+      debugLog('Current pathname:', window.location.pathname);
+      
       return (
         <Router>
           <AuthProvider>
