@@ -385,7 +385,31 @@ The application supports the following environment variables:
 - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous/public key
 
 ### Optional
-- Environment variables for any additional services (email, analytics, etc.)
+- `VITE_DEBUG_MODE` - Set to "true" to enable detailed authentication flow logging
+- `VITE_ENABLE_SESSIONS` - Set to "true" to enable persistent user sessions (requires Supabase Pro Plan)
+
+### Session Management
+
+The application includes a configurable session management system:
+
+**Sessions Disabled (Default - Free Tier Compatible):**
+- Sessions are disabled by default (`VITE_ENABLE_SESSIONS=false`)
+- Users will need to sign in again when they refresh the page or return to the site
+- No persistent session storage, which works with Supabase free tier
+- Prevents infinite loading issues that can occur with session restoration on free plans
+
+**Sessions Enabled (Pro Plan Required):**
+- Set `VITE_ENABLE_SESSIONS=true` in your environment variables
+- Users stay signed in across browser sessions and page refreshes
+- Requires Supabase Pro Plan for hosted user sessions
+- Enables automatic session restoration and refresh token handling
+
+**Configuration Example:**
+```bash
+# .env.local
+VITE_DEBUG_MODE=true
+VITE_ENABLE_SESSIONS=false  # Set to true if you have Supabase Pro Plan
+```
 
 ## Development Workflow
 

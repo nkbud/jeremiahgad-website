@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Debug logging utility - using console.info for better visibility
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
+const ENABLE_SESSIONS = import.meta.env.VITE_ENABLE_SESSIONS === 'true';
 const debugLog = (message, ...args) => {
   if (DEBUG_MODE) {
     console.info(`[AUTH DEBUG] ${message}`, ...args);
@@ -63,6 +64,7 @@ const AuthProviderComponent = ({ children }) => {
   
   useEffect(() => {
     debugLog('AuthProvider useEffect starting - initializing session');
+    debugLog('Session management enabled:', ENABLE_SESSIONS);
     debugLog('Supabase URL:', supabase.supabaseUrl);
     debugLog('Browser storage check - localStorage available:', typeof localStorage !== 'undefined');
     debugLog('Browser storage check - sessionStorage available:', typeof sessionStorage !== 'undefined');
@@ -71,6 +73,18 @@ const AuthProviderComponent = ({ children }) => {
     
     const getSessionAndProfile = async () => {
       debugLog('getSessionAndProfile called');
+      
+      // If sessions are disabled, skip session restoration and just set loading to false
+      if (!ENABLE_SESSIONS) {
+        debugLog('Sessions disabled, skipping session restoration');
+        if (mounted) {
+          setUser(null);
+          setProfile(null);
+          setLoadingWithDebug(false, 'Sessions disabled - no session restoration');
+        }
+        return;
+      }
+      
       try {
         debugLog('Calling supabase.auth.getSession() with timeout...');
         
@@ -183,9 +197,16 @@ const AuthProviderComponent = ({ children }) => {
         
         debugLog('==== AUTH STATE CHANGE EVENT START ====');
         debugLog('Auth state change:', event, session?.user?.id || 'no user');
+        debugLog('Sessions enabled:', ENABLE_SESSIONS);
         debugLog('Current pathname:', window.location.pathname);
         debugLog('Current user state before change:', user?.id || 'null');
         debugLog('Current loading state before change:', loading);
+        
+        // When sessions are disabled, skip INITIAL_SESSION events entirely
+        if (!ENABLE_SESSIONS && event === 'INITIAL_SESSION') {
+          debugLog('Sessions disabled, ignoring INITIAL_SESSION event');
+          return;
+        }
         
         // Only set loading for events that require user action or significant state changes
         // Never show loading for INITIAL_SESSION or when just restoring existing sessions
@@ -360,6 +381,7 @@ const AuthProviderComponent = ({ children }) => {
           {DEBUG_MODE && (
             <div style={{ fontSize: '12px', color: '#666', maxWidth: '400px' }}>
               <div>Debug Mode Active</div>
+              <div>Sessions: {ENABLE_SESSIONS ? 'Enabled' : 'Disabled'}</div>
               <div>User: {user?.id || 'null'}</div>
               <div>Profile: {profile?.id || 'null'}</div>
               <div>Path: {window.location.pathname}</div>
