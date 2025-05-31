@@ -68,9 +68,12 @@ const AuthProviderComponent = ({ children }) => {
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
-        // Only set loading for actual auth events, not initial session restoration
-        // This prevents the blank page issue when users revisit the site
-        if (event !== 'INITIAL_SESSION') {
+        // Only set loading for events that actually change the auth state significantly
+        // Don't show loading screen for returning users (SIGNED_IN when user already exists)
+        const shouldShowLoading = event === 'SIGNED_UP' || event === 'SIGNED_OUT' || 
+                                 (event === 'SIGNED_IN' && !user);
+        
+        if (shouldShowLoading) {
           setLoading(true);
         }
         
@@ -99,7 +102,10 @@ const AuthProviderComponent = ({ children }) => {
           navigate('/');
         }
         
-        setLoading(false); // Set loading false after processing
+        // Only reset loading if we set it to true earlier
+        if (shouldShowLoading) {
+          setLoading(false);
+        }
       }
     );
 
