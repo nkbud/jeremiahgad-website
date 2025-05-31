@@ -5,6 +5,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { CalendarDays, UserCircle, ArrowLeft, AlertTriangle, Loader2, Edit, Share2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const BlogPostPage = () => {
   const { slug } = useParams();
@@ -139,10 +141,29 @@ const BlogPostPage = () => {
       )}
       
       {post.content ? (
-         <div
-            className="prose lg:prose-xl dark:prose-invert max-w-none blog-content-wrapper"
-            dangerouslySetInnerHTML={{ __html: post.content }}
-          />
+         <div className="prose lg:prose-xl dark:prose-invert max-w-none blog-content-wrapper">
+           <ReactMarkdown 
+             remarkPlugins={[remarkGfm]}
+             components={{
+               iframe: ({node, ...props}) => (
+                 <iframe 
+                   {...props} 
+                   className="w-full rounded-lg" 
+                   style={{minHeight: '315px'}}
+                 />
+               ),
+               img: ({node, ...props}) => (
+                 <img 
+                   {...props} 
+                   className="rounded-lg shadow-lg mx-auto"
+                   loading="lazy"
+                 />
+               ),
+             }}
+           >
+             {post.content}
+           </ReactMarkdown>
+         </div>
       ) : (
         <p className="text-muted-foreground">Content for this post is not available.</p>
       )}
