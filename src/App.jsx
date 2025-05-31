@@ -24,7 +24,7 @@ import React from 'react';
     const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
     const debugLog = (message, ...args) => {
       if (DEBUG_MODE) {
-        console.log(`[APP DEBUG] ${message}`, ...args);
+        console.info(`[APP DEBUG] ${message}`, ...args);
       }
     };
 
