@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { CalendarDays, UserCircle, ArrowLeft, AlertTriangle, Loader2, Edit, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 const BlogPostPage = () => {
   const { slug } = useParams();
@@ -144,6 +146,18 @@ const BlogPostPage = () => {
          <div className="prose lg:prose-xl dark:prose-invert max-w-none blog-content-wrapper">
            <ReactMarkdown 
              remarkPlugins={[remarkGfm]}
+             rehypePlugins={[
+               rehypeRaw,
+               [rehypeSanitize, {
+                 tagNames: ['iframe', 'img', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'a', 'blockquote', 'code', 'pre', 'br'],
+                 attributes: {
+                   iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'title', 'style', 'class', 'allow', 'loading'],
+                   img: ['src', 'alt', 'width', 'height', 'style', 'class'],
+                   a: ['href', 'title', 'target', 'rel'],
+                   '*': ['style', 'class']
+                 }
+               }]
+             ]}
              components={{
                iframe: ({node, ...props}) => (
                  <iframe 

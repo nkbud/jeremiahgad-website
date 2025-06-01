@@ -1,6 +1,8 @@
 import React from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 const MarkdownEditor = ({ 
   value, 
@@ -28,7 +30,18 @@ const MarkdownEditor = ({
           }
         }}
         previewOptions={{
-          rehypePlugins: [],
+          rehypePlugins: [
+            rehypeRaw,
+            [rehypeSanitize, {
+              tagNames: ['iframe', 'img', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'a', 'blockquote', 'code', 'pre', 'br'],
+              attributes: {
+                iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'title', 'style', 'class', 'allow', 'loading'],
+                img: ['src', 'alt', 'width', 'height', 'style', 'class'],
+                a: ['href', 'title', 'target', 'rel'],
+                '*': ['style', 'class']
+              }
+            }]
+          ],
           remarkPlugins: [],
         }}
       />
