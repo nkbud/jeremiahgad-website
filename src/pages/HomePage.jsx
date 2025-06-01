@@ -4,15 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { Home, UserCheck, BookOpen, Tag, Rss, CalendarCheck, Sparkles, TrendingUp, MessageCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Home, UserCheck, Rss, CalendarCheck, Sparkles, TrendingUp, MessageCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
 const quickLinks = [
-  { to: '/buyer-academy', label: 'Buyer Academy', Icon: BookOpen, description: "Navigate the buying process like a pro." },
-  { to: '/seller-academy', label: 'Seller Academy', Icon: Tag, description: "Maximize your home's sale potential." },
-  { to: '/blog', label: 'Real Estate Blog', Icon: Rss, description: "Insights, tips, and market updates." },
-  { to: '/book-appointment', label: 'Book an Appointment', Icon: CalendarCheck, description: "Schedule your consultation today." },
+  { to: '/blog', label: 'Real Estate Blog', Icon: Rss, description: "Insights, tips, and market updates from your trusted real estate expert." },
+  { to: '/book-appointment', label: 'Book an Appointment', Icon: CalendarCheck, description: "Schedule your consultation today and get expert guidance." },
 ];
 
 const HomePage = () => {
