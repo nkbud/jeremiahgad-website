@@ -141,7 +141,7 @@ const CreateBlogPostForm = () => {
           <div className="space-y-2">
             <Label htmlFor="post-content">Content (Markdown)</Label>
             <p className="text-sm text-muted-foreground">
-              Support for markdown syntax and embedded content. You can paste YouTube iframes, images, and other HTML directly into the editor.
+              Support for markdown syntax and embedded content. For YouTube videos, you can paste iframe code or regular YouTube URLs - they'll automatically be converted to proper embeds.
             </p>
             <MarkdownEditor
               value={blogContent}
@@ -161,8 +161,12 @@ Examples:
 
 ![Image alt text](image-url)
 
-## Embedding YouTube Videos:
+## Embedding YouTube Videos (any of these formats work):
 <iframe src='https://www.youtube.com/embed/VIDEO_ID' width='560' height='315' frameborder='0' allowfullscreen></iframe>
+
+<iframe src='https://www.youtube.com/watch?v=VIDEO_ID' width='560' height='315'></iframe>
+
+<iframe src='https://youtu.be/VIDEO_ID' width='560' height='315'></iframe>
 
 ## Embedding Other Content:
 <iframe src='https://example.com/embed' width='100%' height='400' frameborder='0'></iframe>"

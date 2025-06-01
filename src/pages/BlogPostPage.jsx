@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
+import { getYouTubeIframeProps, isYouTubeUrl } from '@/utils/youtube';
 
 const BlogPostPage = () => {
   const { slug } = useParams();
@@ -151,7 +152,7 @@ const BlogPostPage = () => {
                [rehypeSanitize, {
                  tagNames: ['iframe', 'img', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'a', 'blockquote', 'code', 'pre', 'br'],
                  attributes: {
-                   iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'title', 'style', 'class', 'allow', 'loading'],
+                   iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'title', 'style', 'class', 'allow', 'loading', 'referrerpolicy'],
                    img: ['src', 'alt', 'width', 'height', 'style', 'class'],
                    a: ['href', 'title', 'target', 'rel'],
                    '*': ['style', 'class']
@@ -159,13 +160,24 @@ const BlogPostPage = () => {
                }]
              ]}
              components={{
-               iframe: ({node, ...props}) => (
-                 <iframe 
-                   {...props} 
-                   className="w-full rounded-lg" 
-                   style={{minHeight: '315px'}}
-                 />
-               ),
+               iframe: ({node, ...props}) => {
+                 const enhancedProps = isYouTubeUrl(props.src) 
+                   ? getYouTubeIframeProps(props)
+                   : props;
+                 
+                 return (
+                   <div className="relative w-full my-6">
+                     <iframe 
+                       {...enhancedProps} 
+                       className="w-full rounded-lg shadow-lg" 
+                       style={{
+                         minHeight: '315px',
+                         aspectRatio: isYouTubeUrl(props.src) ? '16/9' : 'auto'
+                       }}
+                     />
+                   </div>
+                 );
+               },
                img: ({node, ...props}) => (
                  <img 
                    {...props} 
