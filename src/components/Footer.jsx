@@ -21,10 +21,8 @@
               <div>
                 <p className="text-lg font-semibold text-primary-foreground mb-4">Quick Links</p>
                 <ul className="space-y-2">
-                  <li><Link to="/buyer-academy" className="hover:text-primary transition-colors">Buyer Academy</Link></li>
-                  <li><Link to="/seller-academy" className="hover:text-primary transition-colors">Seller Academy</Link></li>
                   <li><Link to="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
-                  <li><Link to="/consultation" className="hover:text-primary transition-colors">Book a Consultation</Link></li>
+                  <li><Link to="/book-appointment" className="hover:text-primary transition-colors">Book Appointment</Link></li>
                 </ul>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle, Loader2, UploadCloud } from 'lucide-react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import MarkdownEditor from '@/components/ui/markdown-editor';
 
 const CreateBlogPostForm = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const quillRef = useRef(null);
 
   const [blogTitle, setBlogTitle] = useState('');
   const [blogSlug, setBlogSlug] = useState('');
@@ -64,63 +62,6 @@ const CreateBlogPostForm = () => {
     }
   };
 
-  const imageHandler = useCallback(() => {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
-    input.click();
-
-    input.onchange = async () => {
-      const file = input.files[0];
-      if (file && quillRef.current) {
-        const quillEditor = quillRef.current.getEditor();
-        const range = quillEditor.getSelection(true);
-        quillEditor.insertEmbed(range.index, 'image', `/assets/loader.gif`); 
-        quillEditor.setSelection(range.index + 1);
-
-        try {
-          const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('blog_images')
-            .upload(fileName, file);
-
-          if (uploadError) throw uploadError;
-
-          const { data: publicUrlData } = supabase.storage.from('blog_images').getPublicUrl(uploadData.path);
-          const imageUrl = publicUrlData.publicUrl;
-
-          quillEditor.deleteText(range.index, 1); 
-          quillEditor.insertEmbed(range.index, 'image', imageUrl);
-          quillEditor.setSelection(range.index + 1);
-        } catch (error) {
-          quillEditor.deleteText(range.index, 1); 
-          toast({ variant: 'destructive', title: 'Image Upload Failed', description: error.message });
-        }
-      }
-    };
-  }, [toast]);
-
-  const quillModules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': '1'}, {'header': '2'}, { 'font': [] }],
-        [{size: []}],
-        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-        [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
-        ['link', 'image', 'video'],
-        ['clean']
-      ],
-      handlers: {
-        image: imageHandler,
-      },
-    },
-  }), [imageHandler]);
-
-  const quillFormats = [
-    'header', 'font', 'size', 'bold', 'italic', 'underline', 'strike', 'blockquote',
-    'list', 'bullet', 'indent', 'link', 'image', 'video'
-  ];
-
   const handleSubmitPost = async (e) => {
     e.preventDefault();
     if (!profile?.id || !user) {
@@ -160,7 +101,6 @@ const CreateBlogPostForm = () => {
       toast({ title: 'Blog Post Created!', description: `"${data[0].title}" published.` });
       setBlogTitle(''); setBlogSlug(''); setBlogExcerpt(''); setBlogContent('');
       setBlogCategoryId(''); setBlogImageFile(null); setBlogImagePreview(''); setBlogImageAltText('');
-      if (quillRef.current) quillRef.current.getEditor().setContents([]);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error Creating Post', description: error.message });
     } finally {
@@ -172,7 +112,7 @@ const CreateBlogPostForm = () => {
     <Card className="glassmorphism-card">
       <CardHeader>
         <CardTitle className="flex items-center text-2xl text-primary"><PlusCircle className="mr-2 h-6 w-6" /> Create New Blog Post</CardTitle>
-        <CardDescription>Craft and publish new articles with embedded media.</CardDescription>
+        <CardDescription>Craft and publish new articles with markdown content and embedded media support.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmitPost}>
         <CardContent className="space-y-6">
@@ -188,7 +128,7 @@ const CreateBlogPostForm = () => {
             <Label htmlFor="post-image">Featured Image (Optional)</Label>
             <Input id="post-image" type="file" accept="image/*" onChange={handleImageFileChange} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" disabled={isSubmittingPost || isUploadingImage}/>
             {isUploadingImage && <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading image...</div>}
-            {blogImagePreview && <img-replace src={blogImagePreview} alt="Preview" className="mt-2 max-h-48 w-auto rounded-md object-contain" />}
+            {blogImagePreview && <img src={blogImagePreview} alt="Preview" className="mt-2 max-h-48 w-auto rounded-md object-contain" />}
           </div>
           <div className="space-y-2">
             <Label htmlFor="post-image-alt">Featured Image Alt Text</Label>
@@ -199,8 +139,40 @@ const CreateBlogPostForm = () => {
             <Textarea id="post-excerpt" value={blogExcerpt} onChange={(e) => setBlogExcerpt(e.target.value)} placeholder="A brief summary of the post..." rows={3} disabled={isSubmittingPost}/>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="post-content">Content</Label>
-            <ReactQuill ref={quillRef} theme="snow" value={blogContent} onChange={setBlogContent} modules={quillModules} formats={quillFormats} placeholder="Write your amazing content here..." className="bg-background dark:bg-slate-800 rounded-md" style={{minHeight: '300px'}} readOnly={isSubmittingPost}/>
+            <Label htmlFor="post-content">Content (Markdown)</Label>
+            <p className="text-sm text-muted-foreground">
+              Support for markdown syntax and embedded content. For YouTube videos, you can paste iframe code or regular YouTube URLs - they'll automatically be converted to proper embeds.
+            </p>
+            <MarkdownEditor
+              value={blogContent}
+              onChange={setBlogContent}
+              placeholder="Write your content in markdown... 
+
+Examples:
+# Heading 1
+## Heading 2
+
+**Bold text** and *italic text*
+
+- List item 1
+- List item 2
+
+[Link text](https://example.com)
+
+![Image alt text](image-url)
+
+## Embedding YouTube Videos (any of these formats work):
+<iframe src='https://www.youtube.com/embed/VIDEO_ID' width='560' height='315' frameborder='0' allowfullscreen></iframe>
+
+<iframe src='https://www.youtube.com/watch?v=VIDEO_ID' width='560' height='315'></iframe>
+
+<iframe src='https://youtu.be/VIDEO_ID' width='560' height='315'></iframe>
+
+## Embedding Other Content:
+<iframe src='https://example.com/embed' width='100%' height='400' frameborder='0'></iframe>"
+              height={400}
+              disabled={isSubmittingPost}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="post-category">Category</Label>
